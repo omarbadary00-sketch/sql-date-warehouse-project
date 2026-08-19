@@ -1,0 +1,181 @@
+
+/*
+===============================================================================
+Stored Procedure: Load Bronze Layer (Source -> Bronze)
+===============================================================================
+Script Purpose:
+    This stored procedure loads data into the 'bronze' schema from external CSV files.
+	It performs the following actions:
+	- Truncates the bronze tables before loading data.
+	- Uses the `BULK INSERT` command to load data from csv Files to bronze tables.
+	
+Parameters:
+	None. 
+  This stored procedure does not accept any parameters or return any values.
+
+Usage Example:
+    EXEC bronze.load_bronze;
+===============================================================================
+*/
+
+create or alter procedure bronze.load_bronze as
+begin
+    
+    declare @start_time datetime, @end_time datetime, @batch_end_time datetime, @batch_start_time datetime
+
+    begin try
+        set @batch_start_time = getdate();
+        
+        print '==================================================';
+        print 'loading bronze layer';
+        PRINT '==================================================';
+
+        PRINT '--------------------------------------------------';
+        print 'loading CRM tables'
+        PRINT '--------------------------------------------------';
+
+        --crm_cust_info--
+
+        set @start_time = getdate();
+        print '>> truncating table : bronz.crm_cust_info';
+        truncate table bronze.crm_cust_info
+
+        print '>> insreting data into : bronze.crm_cust_info';
+        BULK INSERT bronze.crm_cust_info
+        FROM 'C:\Users\omart\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_crm\cust_info.csv'
+        WITH
+        (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            TABLOCK
+        );
+
+        set @end_time = getdate();
+        print 'loading duration : ' + cast(datediff(second, @start_time, @end_time) as NVARCHAR) + 'seconds';
+        print '---------------------------------';
+
+
+        --crm_pro_info--
+        
+        set @start_time = getdate();
+        print '>> truncating table : bronz.crm_pro_info';
+        truncate table bronze.crm_pro_info
+
+        print '>> insreting data into : bronze.crm_pro_info';
+        BULK INSERT bronze.crm_pro_info
+        FROM 'C:\Users\omart\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_crm\prd_info.csv'
+        WITH
+        (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            TABLOCK
+        );
+
+        set @end_time = getdate();
+        print 'loading duration : ' + cast(datediff(second, @start_time, @end_time) as NVARCHAR) + 'seconds';
+        print '---------------------------------';
+
+        --crm_sales_details--
+
+        set @start_time = getdate();
+        print'>> truncating table : bronz.crm.sales_details';
+        truncate table bronze.crm_sales_details
+
+        print'>> insreting data into : bronze.crm_sales_detalis';
+        BULK INSERT bronze.crm_sales_details
+        FROM 'C:\Users\omart\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_crm\sales_details.csv'
+        WITH
+        (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            TABLOCK
+        );
+
+        set @end_time = getdate();
+        print 'loading duration : ' + cast(datediff(second, @start_time, @end_time) as NVARCHAR) + 'seconds';
+        print '---------------------------------';
+
+        PRINT '--------------------------------------------------';
+        print 'loading ERP tables'
+        PRINT '--------------------------------------------------';
+
+        --erp_cust_az12--
+
+        set @start_time = getdate();
+        print'>> truncating table : bronz.erp_cust_az12';
+        truncate table bronze.erp_cust_az12
+
+        print'>> insreting data into : bronze.erp_cust_az12';
+        BULK INSERT bronze.erp_cust_az12
+        FROM 'C:\Users\omart\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_erp\cust_az12.csv'
+        WITH
+        (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            TABLOCK
+        );
+
+        set @end_time = getdate();
+        print 'loading duration : ' + cast(datediff(second, @start_time, @end_time) as NVARCHAR) + 'seconds';
+        print '---------------------------------';
+
+        --erp_loc101--
+
+        set @start_time = getdate();
+        print'>> truncating table : bronz.erp_loc101';
+        truncate table bronze.erp_loc101
+
+        print'>> insreting data into : bronze.erp_loc101';
+        BULK INSERT bronze.erp_loc101
+        FROM 'C:\Users\omart\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_erp\loc_a101.csv'
+        WITH
+        (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            TABLOCK
+        );
+
+        set @end_time = getdate();
+        print 'loading duration : ' + cast(datediff(second, @start_time, @end_time)as NVARCHAR(50)) + 'seconds';
+        print '---------------------------------';
+
+        --erp_px_cat_d1v2--
+
+        set @start_time = getdate();
+        print'>> truncating table : bronz.erp_px_cat_d1v2';
+        truncate table bronze.erp_px_cat_d1v2
+
+        print'>> insreting data into : bronze.erp_px_cat_d1v2';
+        BULK INSERT bronze.erp_px_cat_d1v2
+        FROM 'C:\Users\omart\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_erp\px_cat_g1v2.csv'
+        WITH
+        (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            TABLOCK
+        );
+
+        set @end_time = getdate();
+        print 'loading duration : ' + cast(datediff(second, @start_time, @end_time) as NVARCHAR) + 'seconds';
+        print '---------------------------------';
+
+        SET @batch_end_time = GETDATE();
+        PRINT '=============================================='
+        PRINT 'Loading Bronze Layer is Completed';
+        PRINT '  - Total Load Duration: ' + CAST(DATEDIFF(SECOND, @batch_start_time, @batch_end_time) AS NVARCHAR) + ' seconds';
+        PRINT '=============================================='
+
+    END TRY
+
+    BEGIN CATCH
+
+        PRINT '=================================================='
+        PRINT 'ERROR OCCURED DURING LOADING BRONZE LAYER'
+        PRINT 'Error Message' + ERROR_MESSAGE();
+        PRINT 'Error Message' + CAST (ERROR_NUMBER() AS NVARCHAR);
+        PRINT 'Error Message' + CAST (ERROR_STATE() AS NVARCHAR);
+        PRINT '=================================================='
+
+    END CATCH
+
+end
