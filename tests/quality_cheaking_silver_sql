@@ -1,0 +1,167 @@
+
+/*
+=============================================================================
+Quality Checks
+=============================================================================
+Script Purpose:
+    This script performs various quality checks for data consistency, accuracy, 
+    and standardization across the 'silver' schemas. It includes checks for:
+    - Null or duplicate primary keys.
+    - Unwanted spaces in string fields.
+    - Data standardization and consistency.
+    - Invalid date ranges and orders.
+    - Data consistency between related fields.
+
+Usage Notes:
+    - Run these checks after data loading Silver Layer.
+    - Investigate and resolve any discrepancies found during the checks.
+=============================================================================
+*/
+
+ --====================================================================
+ --Quality Checks: bronze.crm_pro_info'
+ --====================================================================
+print ' ====================================================================';
+PRINT ' Checking: bronze.crm_pro_info - Duplicate prd_id';
+print ' ====================================================================';
+select 
+    prd_id,
+    count(*) as cnt          
+from bronze.crm_pro_info
+where prd_id is not null    
+group by prd_id
+having count(*) > 1          
+order by prd_id;
+
+
+-- ====================================================================
+-- Quality Checks: bronze.erp_loc101
+-- ====================================================================
+print ' ====================================================================';
+PRINT 'Checking: bronze.erp_loc101 - CID issues (duplicates, nulls, blanks, spaces)';
+print ' ====================================================================';
+select
+    CID,
+    count(*) as cnt
+from bronze.erp_loc101
+group by CID
+having count(*) > 1       
+    or CID is null          
+    or trim(CID) = ''       
+    or CID != trim(CID);    
+
+PRINT 'Checking: bronze.erp_loc101 - Unexpected CNTRY values';
+select distinct CNTRY
+from bronze.erp_loc101
+where CNTRY not in ('US', 'USA', 'DE', '')
+   or CNTRY is null;
+
+
+-- ====================================================================
+-- Quality Checks: bronze.erp_px_cat_d1v2
+-- ====================================================================
+print ' ====================================================================';
+PRINT 'Checking: bronze.erp_px_cat_d1v2 - Distinct id list';
+print ' ====================================================================';
+select distinct 
+id
+from bronze.erp_px_cat_d1v2
+order by id;
+
+PRINT 'Checking: silver.crm_pro_info - Distinct cat_id list (compare against bronze)';
+select distinct
+cat_id
+from silver.crm_pro_info
+order by cat_ID;
+
+PRINT 'Checking: bronze.erp_px_cat_d1v2 - Unwanted spaces in cat / MAINTENANCE';
+select 
+*
+from bronze.erp_px_cat_d1v2
+where cat != trim(cat) or MAINTENANCE != trim(MAINTENANCE);
+
+
+-- ====================================================================
+-- Quality Checks: bronze.crm_sales_details
+-- ====================================================================
+print ' ====================================================================';
+PRINT 'Checking: bronze.crm_sales_details - Invalid sls_order_dt';
+print ' ====================================================================';
+select
+    nullif(sls_order_dt, 0) as sls_order_dt
+from bronze.crm_sales_details
+where sls_order_dt <= 0                    
+   or len(sls_order_dt) != 8               
+   or sls_order_dt > 20500101               
+   or sls_order_dt < 19000101;            
+
+
+-- ====================================================================
+-- Quality Checks: silver.crm_cust_info
+-- ====================================================================
+print ' ====================================================================';
+PRINT 'Checking: silver.crm_cust_info - Duplicate or null cst_id';
+print ' ====================================================================';
+select 
+    cst_id,
+    count(*) as cnt
+from silver.crm_cust_info
+group by cst_id
+having count(*) > 1 or cst_id is null;
+
+PRINT 'Checking: silver.crm_cust_info - Unwanted spaces in cst_firstname';
+select cst_firstname
+from silver.crm_cust_info
+where cst_firstname != trim(cst_firstname);
+
+PRINT 'Checking: silver.crm_cust_info - Unwanted spaces in cst_lastname';
+select cst_lastname
+from silver.crm_cust_info
+where cst_lastname != trim(cst_lastname);
+
+PRINT 'Checking: silver.crm_cust_info - Standardized cst_marital_status values';
+select distinct cst_marital_status
+from silver.crm_cust_info;
+
+PRINT 'Checking: silver.crm_cust_info - Standardized cst_gndr values';
+select distinct cst_gndr
+from silver.crm_cust_info;
+
+PRINT 'Checking: silver.crm_cust_info - Invalid or missing cst_create_date';
+select *
+from silver.crm_cust_info
+where cst_create_date is null
+   or cst_create_date > getdate();
+
+
+-- ====================================================================
+-- Quality Checks: silver.erp_cust_az12
+-- ====================================================================
+print ' ====================================================================';
+PRINT 'Checking: silver.erp_cust_az12 - Leftover NAS prefix in CID';
+print ' ====================================================================';
+select CID
+from silver.erp_cust_az12
+where CID like 'NAS%';
+
+PRINT 'Checking: silver.erp_cust_az12 - Unwanted spaces in CID';
+select CID
+from silver.erp_cust_az12
+where CID != trim(CID);
+
+PRINT 'Checking: silver.erp_cust_az12 - Out-of-range BDATE';
+select BDATE
+from silver.erp_cust_az12
+where BDATE > getdate()
+   or BDATE < '1900-01-01';
+
+PRINT 'Checking: silver.erp_cust_az12 - Standardized GEN values';
+select distinct GEN
+from silver.erp_cust_az12;
+
+PRINT 'Checking: silver.erp_cust_az12 - Orphan CID not found in silver.crm_cust_info';
+select CID
+from silver.erp_cust_az12
+where CID not in (
+    select cst_key from silver.crm_cust_info
+);
